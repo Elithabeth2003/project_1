@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Товары на все случаи жизни</title>
+    {% load static %}
+    <link rel="icon" href="{% static 'icon.ico' %}" type="image/x-icon">
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background-color: #f7f9fc; 
+            color: #333; 
+        }
+        h1 { 
+            text-align: center; 
+            color: #333; 
+            margin-bottom: 20px; 
+        }
+        form { 
+            background: #ffffff; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); 
+            margin: 0 auto; 
+            width: 80%; 
+            max-width: 600px; 
+        }
+        label { 
+            display: block; 
+            margin: 10px 0 5px; 
+            color: #555; 
+        }
+        input, textarea { 
+            width: 100%; 
+            padding: 10px; 
+            border: 1px solid #ddd; 
+            border-radius: 4px; 
+            box-sizing: border-box; 
+        }
+        textarea { 
+            height: 80px; 
+            resize: vertical; 
+        }
+        input[type="file"] { 
+            padding: 5px; 
+        }
+        button { 
+            padding: 10px 15px; 
+            background-color: #007BFF; 
+            color: white; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-size: 16px; 
+            margin-top: 10px; 
+        }
+        button:hover { 
+            background-color: #0056b3; 
+        }
+        .container { 
+            margin: 0 auto; 
+            width: 80%; 
+            max-width: 800px; 
+        }
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 20px; 
+            background: #ffffff; 
+            border-radius: 8px; 
+            overflow: hidden; 
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); 
+        }
+        th, td { 
+            padding: 12px; 
+            border: 1px solid #ddd; 
+            text-align: left; 
+        }
+        th { 
+            background-color: #f4f4f4; 
+            color: #333; 
+        }
+        img { 
+            max-width: 100px; 
+            border-radius: 4px; 
+        }
+    </style>
+</head>
+<body>
+    <h1>Товары на все случаи жизни</h1>
+
+    <form id="product-form">
+        <label for="name">Название:</label>
+        <input type="text" id="name" name="name" required>
+
+        <label for="description">Описание:</label>
+        <textarea id="description" name="description" required></textarea>
+
+        <label for="price">Цена:</label>
+        <input type="number" id="price" name="price" step="0.01" min="0.01" required>
+
+        <label for="image">Изображение:</label>
+        <input type="file" id="image" name="image" accept="image/*">
+
+        <button type="submit">Отправить</button>
+    </form>
+
+    <div class="container">
+        <h2>Список продуктов</h2>
+        <table id="product-list">
+            <thead>
+                <tr>
+                    <th>Название</th>
+                    <th>Описание</th>
+                    <th>Цена</th>
+                    <th>Изображение</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8000/api/products/';
+
+        async function fetchProducts() {
+            try {
+                const response = await fetch(API_URL);
+                const products = await response.json();
+                const tbody = document.querySelector('#product-list tbody');
+                tbody.innerHTML = '';
+
+                products.forEach(product => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${product.name}</td>
+                        <td>${product.description}</td>
+                        <td>${product.price}</td>
+                        <td><img src="${product.image}" alt="${product.name}"></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (error) {
+                console.error('Ошибка при загрузке продуктов:', error);
+            }
+        }
+
+        async function addProduct(event) {
+            event.preventDefault();
+            const formData = new FormData(document.querySelector('#product-form'));
+            const productData = {
+                name: formData.get('name'),
+                description: formData.get('description'),
+                price: parseFloat(formData.get('price')),
+            };
+
+            const imageFile = formData.get('image');
+            if (imageFile) {
+                productData.image = await uploadImage(imageFile);
+            }
+
+            try {
+                await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(productData),
+                });
+                fetchProducts();
+            } catch (error) {
+                console.error('Ошибка при добавлении продукта:', error);
+            }
+        }
+
+        async function uploadImage(file) {
+            const formData = new FormData();
+            formData.append('image', file);
+
+            const response = await fetch(`${API_URL}upload/`, {
+                method: 'POST',
+                body: formData,
+            });
+            const data = await response.json();
+            return data.image_url;
+        }
+
+        document.querySelector('#product-form').addEventListener('submit', addProduct);
+
+        fetchProducts();
+    </script>
+</body>
+</html>
